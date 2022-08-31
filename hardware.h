@@ -50,6 +50,8 @@
 #define RCC_APB2ENR (RCC + 0x18)
 #define RCC_APB1ENR (RCC + 0x1C)
 
+#define RCC_APB2ENR_AFIO_EN (0x01)
+
 #define FLASH_ACR     (FLASH + 0x00)
 #define FLASH_KEYR    (FLASH + 0x04)
 #define FLASH_OPTKEYR (FLASH + 0x08)

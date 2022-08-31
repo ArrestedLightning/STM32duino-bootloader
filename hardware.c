@@ -154,15 +154,17 @@ void setupCLK(void) {
 
 
 void setupLEDAndButton (void) {
-    // SET_REG(AFIO_MAPR,(GET_REG(AFIO_MAPR) & ~AFIO_MAPR_SWJ_CFG) | AFIO_MAPR_SWJ_CFG_NO_JTAG_NO_SW);// Try to disable SWD AND JTAG so we can use those pins (not sure if this works).
+    //RCC clock must be enabled before we can configure AFIO to release JTAG pins
+    SET_REG(RCC_APB2ENR, GET_REG(RCC_APB2ENR) | RCC_APB2ENR_AFIO_EN);
+    SET_REG(AFIO_MAPR, (GET_REG(AFIO_MAPR) & ~AFIO_MAPR_SWJ_CFG) | AFIO_MAPR_SWJ_CFG_NO_JTAG_SW);// Try to disable JTAG so we can use those pins
 
 #if defined(BUTTON_BANK) && defined (BUTTON_PIN) && defined (BUTTON_PRESSED_STATE)
-    SET_REG(GPIO_CR(BUTTON_BANK,BUTTON_PIN),(GET_REG(GPIO_CR(BUTTON_BANK,BUTTON_PIN)) & crMask(BUTTON_PIN)) | BUTTON_INPUT_MODE << CR_SHITF(BUTTON_PIN));
+    SET_REG(GPIO_CR(BUTTON_BANK, BUTTON_PIN), (GET_REG(GPIO_CR(BUTTON_BANK,BUTTON_PIN)) & crMask(BUTTON_PIN)) | BUTTON_INPUT_MODE << CR_SHITF(BUTTON_PIN));
 
-    gpio_write_bit(BUTTON_BANK, BUTTON_PIN,1-BUTTON_PRESSED_STATE);// set pulldown resistor in case there is no button.
+    gpio_write_bit(BUTTON_BANK, BUTTON_PIN, 1 - BUTTON_PRESSED_STATE);// set pulldown resistor in case there is no button.
 #endif
 #if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
-    SET_REG(GPIO_CR(LED_BANK,LED_PIN),(GET_REG(GPIO_CR(LED_BANK,LED_PIN)) & crMask(LED_PIN)) | CR_OUTPUT_PP << CR_SHITF(LED_PIN));
+    SET_REG(GPIO_CR(LED_BANK,LED_PIN), (GET_REG(GPIO_CR(LED_BANK, LED_PIN)) & crMask(LED_PIN)) | CR_OUTPUT_PP << CR_SHITF(LED_PIN));
 #endif
 }
 
