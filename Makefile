@@ -140,6 +140,7 @@ gd32f1-frankenmaple: begin clean gccversion build_gd32f1-frankenmaple sizeafter 
 cc3d: begin clean gccversion build_cc3d sizeafter finished  copy_cc3d end
 generic-pc13-fastboot: begin clean gccversion build_generic-pc13-fastboot sizeafter finished  copy_generic-pc13-fastboot end
 smart-v2: begin clean gccversion build_smart-v2 sizeafter finished  copy_smart-v2 end
+kilosegment-clock: begin clean gccversion build_kilosegment-clock sizeafter finished  copy_kilosegment-clock end
 
 build: elf bin lss sym
 
@@ -449,6 +450,18 @@ copy_smart-v2:
 	@echo "Copying to binaries folder"
 	@echo
 	cp $(TARGET).bin bootloader_only_binaries/smart-v2.bin
+	@echo
+
+build_kilosegment-clock: TARGETFLAGS= -DTARGET_KILOSEGMENT_CLOCK $(DEFINES)
+# Set the linker script
+build_kilosegment-clock: LDFLAGS +=-T$(ST_LIB)/c_only_md_high_density.ld
+build_kilosegment-clock: elf bin lss sym
+copy_kilosegment-clock:
+	@echo
+	@echo "Copying to binaries folder"
+	@echo
+	cp $(TARGET).bin bootloader_only_binaries/kilosegment_clock.bin
+	xxd -i bootloader_only_binaries/kilosegment_clock.bin > bootloader_only_binaries/kilosegment_clock_bootloader.h
 	@echo
 
 bin: $(TARGET).bin

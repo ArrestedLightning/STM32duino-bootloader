@@ -406,6 +406,17 @@
     #define LED_PIN             3
     #define LED_ON_STATE        0
 
+#elif defined TARGET_KILOSEGMENT_CLOCK
+
+    #define LED_BANK            GPIOA
+    #define LED_PIN             15
+    #define LED_ON_STATE        0
+
+    // Up Button
+    #define BUTTON_BANK GPIOB
+    #define BUTTON_PIN 0
+    #define BUTTON_PRESSED_STATE 0
+
 
 #else
     #error "No config for this target"
