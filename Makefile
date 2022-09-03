@@ -34,7 +34,7 @@ CFLAGS += -Wa,-adhlns=$(BUILDDIR)/$(subst $(suffix $<),.lst,$<)
 CFLAGS += $(patsubst %,-I%,$(INCDIRS))
 
 # Assembler Flags
-ASFLAGS = -Wa,-adhlns=$(BUILDDIR)/$(<:.s=.lst)#,--g$(DEBUG)
+ASFLAGS = -Wa,-adhlns=$(BUILDDIR)/$(<:.S=.lst)#,--g$(DEBUG)
 
 LDFLAGS = -nostartfiles -Wl,-Map=$(TARGET).map,--cref,--gc-sections
 LDFLAGS += -lc -lgcc
@@ -78,7 +78,7 @@ ALL_ASFLAGS = -g -mcpu=$(MCU) $(THUMB_IW) -I. -x assembler-with-cpp $(ASFLAGS)
 
 # --------------------------------------------- #
 # file management
-ASRC = $(ST_LIB)/c_only_startup.s $(ST_LIB)/cortexm3_macro.s
+ASRC = $(ST_LIB)/c_only_startup.S $(ST_LIB)/cortexm3_macro.S
 
 STM32SRCS =
 
@@ -97,12 +97,12 @@ SRC = $(SRCS) $(STM32SRCS) $(STM32USBSRCS)
 
 # Define all object files.
 _COBJ =  $(SRC:.c=.o)
-_AOBJ =  $(ASRC:.s=.o)
+_AOBJ =  $(ASRC:.S=.o)
 COBJ = $(patsubst %, $(BUILDDIR)/%,$(_COBJ))
 AOBJ = $(patsubst %, $(BUILDDIR)/%,$(_AOBJ))
 
 # Define all listing files.
-_LST  =  $(ASRC:.s=.lst)
+_LST  =  $(ASRC:.S=.lst)
 _LST +=  $(SRC:.c=.lst)
 LST = $(patsubst %, $(BUILDDIR)/%,$(_LST))
 
@@ -556,7 +556,7 @@ $(COBJ) : $(BUILDDIR)/%.o : %.c
 	$(CC) -c $(THUMB) $(ALL_CFLAGS) $< -o $@
 
 # Assemble: create object files from assembler source files. ARM/Thumb
-$(AOBJ) : $(BUILDDIR)/%.o : %.s
+$(AOBJ) : $(BUILDDIR)/%.o : %.S
 	@echo
 	@echo $(MSG_ASSEMBLING) $<
 	$(CC) -c $(THUMB) $(ALL_ASFLAGS) $< -o $@
@@ -580,7 +580,7 @@ clean_list :
 	$(REMOVE) $(AOBJ)
 	$(REMOVE) $(LST)
 	$(REMOVE) flash/tmpflash.bin
-#   $(REMOVE) $(SRC:.c=.s)
+#   $(REMOVE) $(SRC:.c=.S)
 #   $(REMOVE) $(SRC:.c=.d)
 	$(REMOVE) .dep/*
 

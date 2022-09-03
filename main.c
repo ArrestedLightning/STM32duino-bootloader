@@ -33,62 +33,63 @@
 
 #include "common.h"
 #include "dfu.h"
-extern volatile dfuUploadTypes_t userUploadType;
 
 int main()
 {
     bool no_user_jump = FALSE;
-    bool dont_wait=FALSE;
+    bool dont_wait = FALSE;
 
     systemReset(); // peripherals but not PC
     setupCLK();
     setupLEDAndButton();
-    setupUSB();
-    setupFLASH();
 
     switch(checkAndClearBootloaderFlag())
     {
         case 0x01:
             no_user_jump = TRUE;
-#if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
-            strobePin(LED_BANK, LED_PIN, STARTUP_BLINKS, BLINK_FAST,LED_ON_STATE);
-#endif
-        break;
+            #if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
+                strobePin(LED_BANK, LED_PIN, STARTUP_BLINKS, BLINK_FAST,LED_ON_STATE);
+            #endif
+            break;
         case 0x02:
-            dont_wait=TRUE;
-        break;
+            dont_wait = TRUE;
+            break;
         default:
-			#ifdef FASTBOOT
-				dont_wait=TRUE;
-			#else
-				#if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
-							strobePin(LED_BANK, LED_PIN, STARTUP_BLINKS, BLINK_FAST,LED_ON_STATE);
-				#endif
-			#endif            
+          #ifdef FASTBOOT
+              dont_wait = TRUE;
+          #else
+              #if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
+                  strobePin(LED_BANK, LED_PIN, STARTUP_BLINKS, BLINK_FAST,LED_ON_STATE);
+              #endif
+          #endif
 
-            if (!checkUserCode(USER_CODE_FLASH0X8005000) && !checkUserCode(USER_CODE_FLASH0X8002000))
-            {
-                no_user_jump = TRUE;
-            }
-            else if (readButtonState())
-            {
-				no_user_jump = TRUE;
-				#ifdef FASTBOOT
-					dont_wait=FALSE;
-				#endif
-            }
-        break;
+          if (!checkUserCode())
+          {
+              no_user_jump = TRUE;
+          }
+          else if (readButtonState())
+          {
+              no_user_jump = TRUE;
+              #ifdef FASTBOOT
+                  dont_wait = FALSE;
+              #endif
+          }
+          break;
     }
 
-    if (!dont_wait)
+    if (!dont_wait || no_user_jump)
     {
+        setupUSB();
+        flashUnlock();
+        setupFLASH();
+
         int delay_count = 0;
 
         while ((delay_count++ < BOOTLOADER_WAIT) || no_user_jump)
         {
-#if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
-            strobePin(LED_BANK, LED_PIN, 1, BLINK_SLOW,LED_ON_STATE);
-#endif
+            #if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
+                strobePin(LED_BANK, LED_PIN, 1, BLINK_SLOW,LED_ON_STATE);
+            #endif
             if (dfuUploadStarted())
             {
                 dfuFinishUpload(); // systemHardReset from DFU once done
@@ -96,24 +97,17 @@ int main()
         }
     }
 
-    if (checkUserCode(USER_CODE_FLASH0X8002000))
+    if (checkUserCode())
     {
-        jumpToUser(USER_CODE_FLASH0X8002000);
+        jumpToUser();
     }
     else
     {
-        if (checkUserCode(USER_CODE_FLASH0X8005000))
-        {
-            jumpToUser(USER_CODE_FLASH0X8005000);
-        }
-        else
-        {
-            // Nothing to execute in either Flash or RAM
-#if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
+        // Nothing to execute in either Flash or RAM
+        #if defined(LED_BANK) && defined(LED_PIN) && defined(LED_ON_STATE)
             strobePin(LED_BANK, LED_PIN, 5, BLINK_FAST,LED_ON_STATE);
-#endif
-            systemHardReset();
-        }
+        #endif
+          systemHardReset();
     }
 
     return 0;// Added to please the compiler

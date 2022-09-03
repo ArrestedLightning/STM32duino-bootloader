@@ -33,7 +33,7 @@
 
 .global	g_pfnVectors
 .global	SystemInit_ExtMemCtl_Dummy
-.global	Default_Handler
+; .global	Default_Handler
 
 /* start address for the initialization values of the .data section.
 defined in linker script */
@@ -102,11 +102,11 @@ LoopFillZerobss:
  * @param  None
  * @retval : None
 */
-    .section	.text.Default_Handler,"ax",%progbits
-Default_Handler:
-Infinite_Loop:
-	b	Infinite_Loop
-	.size	Default_Handler, .-Default_Handler
+;     .section	.text.Default_Handler,"ax",%progbits
+; Default_Handler:
+; Infinite_Loop:
+; 	b	Infinite_Loop
+; 	.size	Default_Handler, .-Default_Handler
 /******************************************************************************
 *
 * The minimal vector table for a Cortex M3.  Note that the proper constructs

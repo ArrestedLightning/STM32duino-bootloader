@@ -59,13 +59,13 @@ bool readPin(u32 bank, u8 pin) {
 bool readButtonState() {
     // todo, implement read
     bool state=FALSE;
-#if defined(BUTTON_BANK) && defined (BUTTON_PIN) && defined (BUTTON_PRESSED_STATE)
+#if defined(BUTTON_BANK) && defined(BUTTON_PIN) && defined(BUTTON_PRESSED_STATE)
     if (GET_REG(GPIO_IDR(BUTTON_BANK)) & (0x01 << BUTTON_PIN))
     {
         state = TRUE;
     }
 
-    if (BUTTON_PRESSED_STATE==0)
+    if (BUTTON_PRESSED_STATE == 0)
     {
         state=!state;
     }
@@ -180,8 +180,8 @@ void setupFLASH() {
     while ((pRCC->CR & 0x02) == 0x00) {}
 }
 
-bool checkUserCode(u32 usrAddr) {
-    u32 sp = *(vu32 *) usrAddr;
+bool checkUserCode(void) {
+    u32 sp = *(vu32 *) (USER_CODE_FLASH0X8002000);
 
     if ((sp & 0x2FFE0000) == 0x20000000) {
         return (TRUE);
@@ -190,82 +190,75 @@ bool checkUserCode(u32 usrAddr) {
     }
 }
 
-void setMspAndJump(u32 usrAddr) {
-    // Dedicated function with no call to any function (appart the last call)
-    // This way, there is no manipulation of the stack here, ensuring that GGC
-    // didn't insert any pop from the SP after having set the MSP.
-    typedef void (*funcPtr)(void);
-    u32 jumpAddr = *(vu32 *)(usrAddr + 0x04); /* reset ptr in vector table */
-
-    funcPtr usrMain = (funcPtr) jumpAddr;
+static __attribute__((noreturn)) void setMspAndJump(u32 usrAddr) {
+    u32 usrSp = *(vu32 *)usrAddr;
+    u32 usrMain = *(vu32 *)(usrAddr + 0x04); /* reset ptr in vector table */
 
     SET_REG(SCB_VTOR, (vu32) (usrAddr));
 
-    asm volatile("msr msp, %0"::"g"(*(volatile u32 *)usrAddr));
+    __asm__ volatile(
+        "msr msp, %0\n"
+        "bx %1\n"
+        :: "r" (usrSp), "r" (usrMain));
 
-    usrMain();                                /* go! */
+    __builtin_trap();
 }
 
 
-void jumpToUser(u32 usrAddr) {
+void jumpToUser(void) {
 
     /* tear down all the dfu related setup */
     // disable usb interrupts, clear them, turn off usb, set the disc pin
     // todo pick exactly what we want to do here, now its just a conservative
-    flashLock();
-    usbDsbISR();
     nvicDisableInterrupts();
-
-#ifndef HAS_MAPLE_HARDWARE
-    usbDsbBus();
-#endif
 
 // Does nothing, as PC12 is not connected on teh Maple mini according to the schemmatic     setPin(GPIOC, 12); // disconnect usb from host. todo, macroize pin
     systemReset(); // resets clocks and periphs, not core regs
 
-    setMspAndJump(usrAddr);
+    setMspAndJump(USER_CODE_FLASH0X8002000);
 }
 
 void bkp10Write(u16 value)
 {
-        // Enable clocks for the backup domain registers
-        pRCC->APB1ENR |= (RCC_APB1ENR_PWR_CLK | RCC_APB1ENR_BKP_CLK);
+    // Enable clocks for the backup domain registers
+    pRCC->APB1ENR |= (RCC_APB1ENR_PWR_CLK | RCC_APB1ENR_BKP_CLK);
 
-        // Disable backup register write protection
-        pPWR->CR |= PWR_CR_DBP;
+    // Disable backup register write protection
+    pPWR->CR |= PWR_CR_DBP;
 
-        // store value in pBK DR10
-        pBKP->DR10 = value;
+    // store value in pBK DR10
+    pBKP->DR10 = value;
 
-        // Re-enable backup register write protection
-        pPWR->CR &=~ PWR_CR_DBP;
+    // Re-enable backup register write protection
+    pPWR->CR &=~ PWR_CR_DBP;
 }
 
 int checkAndClearBootloaderFlag()
 {
     bool flagSet = 0x00;// Flag not used
 
-    // Enable clocks for the backup domain registers
-    pRCC->APB1ENR |= (RCC_APB1ENR_PWR_CLK | RCC_APB1ENR_BKP_CLK);
+    #ifndef NO_BKP_REG_CHECK
+        // Enable clocks for the backup domain registers
+        pRCC->APB1ENR |= (RCC_APB1ENR_PWR_CLK | RCC_APB1ENR_BKP_CLK);
 
-    switch (pBKP->DR10)
-    {
-        case RTC_BOOTLOADER_FLAG:
-            flagSet = 0x01;
-            break;
-        case RTC_BOOTLOADER_JUST_UPLOADED:
-            flagSet = 0x02;
-            break;
-    }
+        switch (pBKP->DR10)
+        {
+            case RTC_BOOTLOADER_FLAG:
+                flagSet = 0x01;
+                break;
+            case RTC_BOOTLOADER_JUST_UPLOADED:
+                flagSet = 0x02;
+                break;
+        }
 
-    if (flagSet!=0x00)
-    {
-        bkp10Write(0x0000);// Clear the flag
-        // Disable clocks
-        pRCC->APB1ENR &= ~(RCC_APB1ENR_PWR_CLK | RCC_APB1ENR_BKP_CLK);
-    }
+        if (flagSet!=0x00)
+        {
+            bkp10Write(0x0000);// Clear the flag
+            // Disable clocks
+            pRCC->APB1ENR &= ~(RCC_APB1ENR_PWR_CLK | RCC_APB1ENR_BKP_CLK);
+        }
 
-
+    #endif
 
     return flagSet;
 }
@@ -413,7 +406,7 @@ unsigned int crMask(int pin)
 int getFlashEnd(void)
 {
     unsigned short *flashSize = (unsigned short *) (FLASH_SIZE_REG);// Address register
-    return ((int)(*flashSize & 0xffff) * 1024) + 0x08000000;
+    return ((int)(*flashSize & 0xffff) * 1024) + 0x08000000 - RESERVED_EEPROM_FLASH;
 }
 
 int getFlashPageSize(void)

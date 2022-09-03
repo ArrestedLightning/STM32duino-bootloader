@@ -35,14 +35,12 @@
 #include "usb.h"
 
 /* DFU globals */
-static volatile u32 userAppAddr = USER_CODE_RAM; /* default RAM user code location */
-static volatile u32 userAppEnd = RAM_END;
+static volatile u32 userAppAddr; /* default RAM user code location */
+static volatile u32 userAppEnd;
 static volatile DFUStatus dfuAppStatus;       /* includes state */
-volatile dfuUploadTypes_t userUploadType = DFU_UPLOAD_NONE;
 volatile bool dfuBusy = FALSE;
 
 
-//static volatile u8 recvBuffer[wTransferSize] __attribute__((aligned(4)));
 static volatile u8 recvBuffer[LARGEST_FLASH_PAGE_SIZE] __attribute__((aligned(4)));
 
 static volatile u32 userFirmwareLen = 0;
@@ -61,10 +59,9 @@ void dfuInit(void) {
     dfuAppStatus.bState = dfuIDLE;
     dfuAppStatus.iString = 0x00;          /* all strings must be 0x00 until we make them! */
     userFirmwareLen = 0;
-    thisBlockLen = 0;;
-    userAppAddr = USER_CODE_RAM; /* default RAM user code location */
-    userAppEnd = RAM_END;
-    userUploadType=DFU_UPLOAD_NONE;
+    thisBlockLen = 0;
+    userAppAddr = USER_CODE_FLASH0X8002000;
+    userAppEnd = getFlashEnd();
     code_copy_lock = WAIT;
     dfuBusy = FALSE;
 }
@@ -76,8 +73,6 @@ bool dfuUpdateByRequest(void) {
     /* were using the global pInformation struct from usb_lib here,
        see comment in maple_dfu.h around DFUEvent struct */
     dfuBusy = TRUE;
-
-
 
     u8 startState = dfuAppStatus.bState;
     dfuAppStatus.bStatus = OK;
@@ -91,43 +86,6 @@ bool dfuUpdateByRequest(void) {
             if (pInformation->USBwLengths.w > 0) {
                 userFirmwareLen = 0;
                 dfuAppStatus.bState  = dfuDNLOAD_SYNC;
-                switch(pInformation->Current_AlternateSetting)
-                {
-                    /*
-                    Roger Clark. removed upload to RAM option
-                    case 0:
-                        userAppAddr = USER_CODE_RAM;
-                        userUploadType = DFU_UPLOAD_RAM;
-                        break;
-                        */
-                    case 1:
-
-                        userAppAddr = USER_CODE_FLASH0X8005000;
-                        userUploadType = DFU_UPLOAD_FLASH_0X8005000;
-
-                        /* make sure the flash is setup properly, unlock it */
-                        setupFLASH();
-                        flashUnlock();
-                        // Clear lower memory so that we can check on cold boot, whether the last upload was to 0x8002000 or 0x8005000
-                        flashErasePage((u32)USER_CODE_FLASH0X8002000);
-                        bkp10Write(RTC_BOOTLOADER_JUST_UPLOADED);
-
-                        break;
-                    case 2:
-                        userUploadType = DFU_UPLOAD_FLASH_0X8002000;
-                        userAppAddr = USER_CODE_FLASH0X8002000;
-                        /* make sure the flash is setup properly, unlock it */
-                        setupFLASH();
-                        flashUnlock();
-                        bkp10Write(RTC_BOOTLOADER_JUST_UPLOADED);
-
-                        break;
-                    default:
-                    // Roger Clark. Report error
-                        dfuAppStatus.bState  = dfuERROR;
-                        dfuAppStatus.bStatus = errWRITE;
-                        break;
-                }
             } else {
                 dfuAppStatus.bState  = dfuERROR;
                 dfuAppStatus.bStatus = errNOTDONE;
@@ -140,29 +98,6 @@ bool dfuUpdateByRequest(void) {
             thisBlockLen = uploadBlockLen; /* for this first block as well */
             /* calculate where the data should be copied from */
             userFirmwareLen = uploadBlockLen * pInformation->USBwValue;
-            switch(pInformation->Current_AlternateSetting)
-            {
-            /*
-                case 0:
-                    userAppAddr = USER_CODE_RAM;
-                    userAppEnd = RAM_END;
-                    */
-                case 1:
-                    userAppAddr = USER_CODE_FLASH0X8005000;
-                    userAppEnd = getFlashEnd();
-                    break;
-                case 2:
-                    userAppAddr = USER_CODE_FLASH0X8002000;
-                    userAppEnd = getFlashEnd();
-                    break;
-                default:
-                // Roger Clark.
-                // Changed this to report error that its unable to write to this memory
-                // However the code should never get here as only AlternateSetting 1 and 2 are allowed (see above)
-                    dfuAppStatus.bState  = dfuERROR;
-                    dfuAppStatus.bStatus = errWRITE;
-                    break;
-            }
         } else if (pInformation->USBbRequest == DFU_ABORT) {
             dfuAppStatus.bState  = dfuIDLE;
             dfuAppStatus.bStatus = OK;  /* are we really ok? we were just aborted */
@@ -181,31 +116,6 @@ bool dfuUpdateByRequest(void) {
         if (pInformation->USBbRequest == DFU_GETSTATUS) {
             /* todo, add routine to wait for last block write to finish */
 
-            /* Roger Clark. Commented out code associated with RAM upload
-
-            if (userUploadType == DFU_UPLOAD_RAM)
-            {
-                if (code_copy_lock == WAIT) {
-                    code_copy_lock = BEGINNING;
-                    dfuAppStatus.bwPollTimeout0 = 0x20; // 32 ms
-                    dfuAppStatus.bwPollTimeout1 = 0x00;
-                    dfuAppStatus.bState = dfuDNBUSY;
-
-                } else if (code_copy_lock == BEGINNING) {
-                    dfuAppStatus.bState = dfuDNLOAD_SYNC;
-
-                } else if (code_copy_lock == MIDDLE) {
-                    dfuAppStatus.bState = dfuDNLOAD_SYNC;
-
-                } else if (code_copy_lock == END) {
-                    dfuAppStatus.bwPollTimeout0 = 0x00;
-                    code_copy_lock = WAIT;
-                    dfuAppStatus.bState = dfuDNLOAD_IDLE;
-                }
-
-            }
-            else
-            */
             {
                 dfuAppStatus.bState = dfuDNLOAD_IDLE;
                 dfuCopyBufferToExec();
@@ -337,6 +247,11 @@ bool dfuUpdateByRequest(void) {
         dfuAppStatus.bStatus = errSTALLEDPKT;
     }
 
+    /* Don't wait for a USB reset and just reset ourselves after the firmware is uploaded and manifested */
+    if (dfuAppStatus.bState == dfuMANIFEST_WAIT_RESET) {
+        systemHardReset();
+    }
+
     if (dfuAppStatus.bStatus == OK) {
         return TRUE;
     } else {
@@ -409,41 +324,26 @@ u8 *dfuCopyUPLOAD(u16 length) {
     }
 }
 
-void dfuCopyBufferToExec() {
+void dfuCopyBufferToExec(void) {
     int i;
-    u32 *userSpace;
+    u32 userSpace;
+    u32 start, end;
 
-/* Roger Clark.
-    Commented out code associated with upload to RAM
+    userSpace = USER_CODE_FLASH0X8002000 + userFirmwareLen;
 
-    if (userUploadType == DFU_UPLOAD_RAM)
-    {
-        userSpace = (u32 *)(USER_CODE_RAM + userFirmwareLen);
-        // we dont need to handle when thisBlock len is not divisible by 4,
-        //   since the linker will align everything to 4B anyway
-        for (i = 0; i < thisBlockLen; i = i + 4) {
-            *userSpace++ = *(u32 *)(recvBuffer + i);
-        }
+    /* Bail out if trying to flash out of bounds. */
+    start = userSpace;
+    end = start + thisBlockLen;
+    if (end < start || start < userAppAddr || end > userAppEnd) {
+        return;
     }
-    else
-*/
-    {
-        if (userUploadType == DFU_UPLOAD_FLASH_0X8005000)
-        {
-            userSpace = (u32 *)(USER_CODE_FLASH0X8005000 + userFirmwareLen);
-        }
-        else
-        {
-            userSpace = (u32 *)(USER_CODE_FLASH0X8002000 + userFirmwareLen);
-        }
 
-        flashErasePage((u32)(userSpace));
+    flashErasePage(userSpace);
 
-        for (i = 0; i < thisBlockLen; i = i + 4) {
-            flashWriteWord((u32)(userSpace++), *(u32 *)(recvBuffer +i));
-        }
-
+    for (i = 0; i < thisBlockLen; i = i + 4) {
+        flashWriteWord(userSpace + i, *(u32 *)(recvBuffer + i));
     }
+
     userFirmwareLen += thisBlockLen;
 
     thisBlockLen = 0;
@@ -457,30 +357,14 @@ void dfuSetState(u8 newState) {
     dfuAppStatus.bState = newState;
 }
 
-bool dfuUploadStarted() {
+bool dfuUploadStarted(void) {
     return dfuBusy;
 }
 
-void dfuFinishUpload() {
+void dfuFinishUpload(void) {
     while (1)
     {
         __asm("nop");
-
-/* Roger Clark.
-    Commented out code associated with upload to RAM
-
-        if (userUploadType==DFU_UPLOAD_RAM)
-        {
-            if (code_copy_lock == BEGINNING) {
-                code_copy_lock = MIDDLE;
-                strobePin(LED_BANK, LED, 2, 0x1000);
-                dfuCopyBufferToExec();
-                strobePin(LED_BANK, LED, 2, 0x500);
-                code_copy_lock = END;
-            }
-        }
-
-*/
 
         /* otherwise do nothing, dfu state machine resets itself */
     }

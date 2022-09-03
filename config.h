@@ -61,17 +61,10 @@
 #define ALT2_STR_LEN 0x6C
 #define ALT2_MSG_STR 'S',0,'T',0,'M',0,'3',0,'2',0,'d',0,'u',0,'i',0,'n',0,'o',0,' ',0,'b',0,'o',0,'o',0,'t',0,'l',0,'o',0,'a',0,'d',0,'e',0,'r',0,' ',0,'v',0,'1',0,'.',0,'0',0,' ',0,' ',0,'U',0,'p',0,'l',0,'o',0,'a',0,'d',0,' ',0,'t',0,'o',0,' ',0,'F',0,'l',0,'a',0,'s',0,'h',0,' ',0,'0',0,'x',0,'8',0,'0',0,'0',0,'2',0,'0',0,'0',0,'0',0
 
-// Jump locations for legacy bootloader (0x8005000) and new / smaller bootloder (0x8002000)
-#define USER_CODE_FLASH0X8005000    ((u32)0x08005000)
+// Jump locations for new / smaller bootloder (0x8002000)
 #define USER_CODE_FLASH0X8002000    ((u32)0x08002000)
 
 #define LARGEST_FLASH_PAGE_SIZE 0x800
-
-// Upload to RAM has been removed / depreacted so these values a not used any more
-#define USER_CODE_RAM               ((u32)0x20000C00)
-
-// RAM_END, set ram end to the end of ram on the device wth the least RAM (STM32F103C)
-#define RAM_END                     ((u32)0x20005000)
 
 /* Porting information Please read.
 
@@ -155,11 +148,11 @@
 
 // Use Boot1 PB2 as the button, as hardly anyone uses this pin as GPIO
 // Need to set the button input mode to just CR_INPUT and not CR_INPUT_PU_PD because the external pullup on the jumplink is very weak
-	#define BUTTON_INPUT_MODE 	CR_INPUT
+  #define BUTTON_INPUT_MODE   CR_INPUT
     #define BUTTON_BANK GPIOB
     #define BUTTON_PIN 2
     #define BUTTON_PRESSED_STATE 1
-	
+
 #elif defined TARGET_GENERIC_F103_PC13_FASTBOOT
 
 
@@ -169,12 +162,12 @@
 
 // Use Boot1 PB2 as the button, as hardly anyone uses this pin as GPIO
 // Need to set the button input mode to just CR_INPUT and not CR_INPUT_PU_PD because the external pullup on the jumplink is very weak
-	#define BUTTON_INPUT_MODE 	CR_INPUT
+  #define BUTTON_INPUT_MODE   CR_INPUT
     #define BUTTON_BANK GPIOB
     #define BUTTON_PIN 2
     #define BUTTON_PRESSED_STATE 1
 
-	#define FASTBOOT 1
+  #define FASTBOOT 1
 
 #elif defined TARGET_GENERIC_F103_NONE
 
@@ -413,10 +406,14 @@
     #define LED_ON_STATE        0
 
     // Up Button
-    #define BUTTON_BANK GPIOB
-    #define BUTTON_PIN 0
-    #define BUTTON_PRESSED_STATE 0
+    #define BUTTON_BANK           GPIOB
+    #define BUTTON_PIN            0
+    #define BUTTON_PRESSED_STATE  0
 
+
+    #define FASTBOOT              1
+
+    #define RESERVED_FLASH        1024
 
 #else
     #error "No config for this target"
@@ -426,7 +423,13 @@
 // Default to True as this was the default prior to needing to disable it
 // in order to use the boot1 pin on the Blue Pill which has a very week pullup
 #ifndef BUTTON_INPUT_MODE
-	#define BUTTON_INPUT_MODE 	CR_INPUT_PU_PD
+  #define BUTTON_INPUT_MODE   CR_INPUT_PU_PD
+#endif
+
+//Reserved flash at end of storage for EEPROM functionality
+//default to none
+#ifndef RESERVED_EEPROM_FLASH
+  #define RESERVED_EEPROM_FLASH 0
 #endif
 
 #define STARTUP_BLINKS 5
