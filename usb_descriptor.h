@@ -29,7 +29,7 @@
 #include "usb_lib.h"
 #include "usb.h"
 
-#define NUM_ALT_SETTINGS 3
+#define NUM_ALT_SETTINGS 1
 #define STR_DESC_LEN 7
 
 extern ONE_DESCRIPTOR  usbDeviceDescriptorDFU;

@@ -106,32 +106,6 @@ u8 u8_usbConfigDescriptorDFU[u8_usbConfigDescriptorDFU_LENGTH] = {
 
     0x04,   /* iInterface: */
 
-    /************ Descriptor of DFU interface 0 Alternate setting 1 *********/
-    0x09,   /* bLength: Interface Descriptor size */
-    0x04,   /* bDescriptorType: */
-    0x00,   /* bInterfaceNumber: Number of Interface */
-    0x01,   /* bAlternateSetting: Alternate setting */
-    0x00,   /* bNumEndpoints*/
-    0xFE,   /* bInterfaceClass: DFU */
-    0x01,   /* bInterfaceSubClass */
-
-    0x02,   /* nInterfaceProtocol, switched to 0x02 while in dfu_mode */
-
-    0x05,   /* iInterface: */
-
-    /************ Descriptor of DFU interface 0 Alternate setting 2 *********/
-    0x09,   /* bLength: Interface Descriptor size */
-    0x04,   /* bDescriptorType: */
-    0x00,   /* bInterfaceNumber: Number of Interface */
-    0x02,   /* bAlternateSetting: Alternate setting */
-    0x00,   /* bNumEndpoints*/
-    0xFE,   /* bInterfaceClass: DFU */
-    0x01,   /* bInterfaceSubClass */
-
-    0x02,   /* nInterfaceProtocol, switched to 0x02 while in dfu_mode */
-
-    0x06,   /* iInterface: */
-
 
     /******************** DFU Functional Descriptor********************/
     0x09,   /*blength = 7 Bytes*/
@@ -184,27 +158,11 @@ u8 u8_usbStringSerial[USB_SERIAL_STR_LEN] = {
     ALT0_MSG_STR
     };
 
-
-    u8 u8_usbStringAlt1[ALT1_STR_LEN] = {
-    ALT1_STR_LEN,
-    0x03,
-    ALT1_MSG_STR
-    };
-
-
-    u8 u8_usbStringAlt2[ALT2_STR_LEN] = {
-    ALT2_STR_LEN,
-    0x03,
-    ALT2_MSG_STR
-    };
-
 ONE_DESCRIPTOR usbStringDescriptor[STR_DESC_LEN] = {
     { (u8 *)u8_usbStringLangId,  USB_STR_LANG_ID_LEN },
     { (u8 *)u8_usbStringVendor,  USB_VENDOR_STR_LEN },
     { (u8 *)u8_usbStringProduct, USB_PRODUCT_STR_LEN },
     { (u8 *)u8_usbStringSerial,  USB_SERIAL_STR_LEN },
     { (u8 *)u8_usbStringAlt0,    ALT0_STR_LEN },
-    { (u8 *)u8_usbStringAlt1,    ALT1_STR_LEN },
-    { (u8 *)u8_usbStringAlt2,    ALT2_STR_LEN }
 };
 
