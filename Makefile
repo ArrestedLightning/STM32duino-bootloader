@@ -141,6 +141,7 @@ cc3d: begin clean gccversion build_cc3d sizeafter finished  copy_cc3d end
 generic-pc13-fastboot: begin clean gccversion build_generic-pc13-fastboot sizeafter finished  copy_generic-pc13-fastboot end
 smart-v2: begin clean gccversion build_smart-v2 sizeafter finished  copy_smart-v2 end
 kilosegment-clock: begin clean gccversion build_kilosegment-clock sizeafter finished  copy_kilosegment-clock end
+dietscsi: begin clean gccversion build_dietscsi sizeafter finished  copy_dietscsi end
 
 build: elf bin lss sym
 
@@ -464,7 +465,21 @@ copy_kilosegment-clock:
 	xxd -i bootloader_only_binaries/kilosegment_clock.bin > bootloader_only_binaries/kilosegment_clock_bootloader.h
 	@echo
 
+build_dietscsi: TARGETFLAGS= -DTARGET_DIETSCSI $(DEFINES)
+# Set the linker script
+build_dietscsi: LDFLAGS +=-T$(ST_LIB)/c_only_md_high_density.ld
+build_dietscsi: elf bin lss sym hex
+copy_dietscsi:
+	@echo
+	@echo "Copying to binaries folder"
+	@echo
+	cp $(TARGET).bin bootloader_only_binaries/dietscsi.bin
+	xxd -i bootloader_only_binaries/dietscsi.bin > bootloader_only_binaries/dietscsi_bootloader.h
+	cp $(TARGET).hex bootloader_only_binaries/dietscsi.hex
+	@echo
+
 bin: $(TARGET).bin
+hex: $(TARGET).hex
 elf: $(TARGET).elf
 lss: $(TARGET).lss
 sym: $(TARGET).sym
@@ -516,7 +531,7 @@ run: $(TARGET).bin
 %.hex: %.elf
 	@echo
 	@echo $(MSG_FLASH) $@
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) -O ihex $< $@
 
 # Create final output file (.bin) from ELF output file.
 %.bin: %.elf
